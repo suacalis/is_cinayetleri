@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Türkiye İş Cinayetleri Haritası</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        #header {
+            background: linear-gradient(135deg, #c0392b 0%, #8e44ad 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        #header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        #header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        #controls {
+            background: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .filter-group select {
+            padding: 8px 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .filter-group select:hover {
+            border-color: #c0392b;
+        }
+
+        .filter-group input[type="number"] {
+            transition: border-color 0.3s;
+        }
+
+        .filter-group input[type="number"]:hover {
+            border-color: #3498db;
+        }
+
+        .filter-group input[type="number"]:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+
+        .filter-group button:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .filter-group button:active {
+            transform: translateY(0);
+        }
+
+        #loadGithubData:hover {
+            background: #c0392b !important;
+        }
+
+        #loadGithubData:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        #map {
+            width: 100%;
+            height: calc(100vh - 160px);
+        }
+
+        .custom-marker {
+            background-color: #c0392b;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 14px;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .custom-marker:hover {
+            transform: scale(1.1);
+            z-index: 1000 !important;
+        }
+
+        .marker-low { background-color: #f39c12; }
+        .marker-medium { background-color: #e67e22; }
+        .marker-high { background-color: #c0392b; }
+        .marker-critical { background-color: #8e44ad; }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .leaflet-popup-content {
+            margin: 15px;
+            font-size: 14px;
+        }
+
+        .popup-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #c0392b;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #c0392b;
+            padding-bottom: 5px;
+        }
+
+        .popup-info {
+            margin: 8px 0;
+            line-height: 1.8;
+        }
+
+        .popup-info strong {
+            color: #333;
+        }
+
+        .popup-info br + * {
+            margin-left: 0;
+        }
+
+        .legend {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            line-height: 1.8;
+        }
+
+        .legend h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px 0;
+        }
+
+        .legend-color {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .stats {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            margin-top: 10px;
+        }
+
+        .stats h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .stat-item {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        /* Cluster marker styles */
+        .marker-cluster-custom {
+            background: linear-gradient(135deg, #c0392b 0%, #8e44ad 100%);
+            border: 4px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            transition: transform 0.2s;
+        }
+
+        .marker-cluster-custom:hover {
+            transform: scale(1.1);
+        }
+
+        .marker-cluster-custom div {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.2;
+        }
+
+        .cluster-count {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .cluster-label {
+            font-size: 10px;
+            opacity: 0.9;
+            margin-top: -2px;
+        }
+
+        /* Checkbox styles */
+        .filter-group input[type="checkbox"] {
+            transition: transform 0.2s;
+        }
+
+        .filter-group input[type="checkbox"]:hover {
+            transform: scale(1.15);
+        }
+
+        .filter-group label:has(input[type="checkbox"]) {
+            transition: color 0.2s;
+        }
+
+        .filter-group label:has(input[type="checkbox"]):hover {
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🏗️ Türkiye İş Cinayetleri Haritası</h1>
+        <p>İş kazalarında hayatını kaybeden işçilerin haritası - GitHub'dan güncel veri yükleyin veya kendi Excel/CSV dosyanızı kullanın</p>
+    </div>
+
+    <div id="controls">
+        <div class="filter-group">
+            <label for="fileUpload" style="cursor: pointer; background: #27ae60; color: white; padding: 8px 15px; border-radius: 5px; font-weight: 600;">
+                📁 Dosya Yükle (Excel/CSV)
+            </label>
+            <input type="file" id="fileUpload" accept=".xlsx,.xls,.csv" style="display: none;">
+            <span id="fileName" style="font-size: 12px; color: #666; margin-left: 10px;"></span>
+        </div>
+        <div class="filter-group">
+            <button id="loadGithubData" style="padding: 8px 15px; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">
+                📊 GitHub'dan Veri Yükle
+            </button>
+        </div>
+        <div class="filter-group">
+            <label for="citySearch">🔍 İl Ara:</label>
+            <input type="text" id="citySearch" placeholder="İl adı yazın..." style="padding: 8px 15px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px; min-width: 200px;">
+            <button id="searchBtn" style="padding: 8px 20px; background: #c0392b; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">Ara</button>
+        </div>
+        <div class="filter-group">
+            <label for="startYear">Başlangıç Yılı:</label>
+            <input type="number" id="startYear" min="2000" max="2030" value="2024" placeholder="2024" style="padding: 8px 15px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px; width: 100px;">
+        </div>
+        <div class="filter-group">
+            <label for="endYear">Bitiş Yılı:</label>
+            <input type="number" id="endYear" min="2000" max="2030" value="2024" placeholder="2024" style="padding: 8px 15px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px; width: 100px;">
+        </div>
+        <div class="filter-group">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
+                <input type="checkbox" id="allYears" style="cursor: pointer; width: 18px; height: 18px; accent-color: #3498db;">
+                Tümü
+            </label>
+        </div>
+        <div class="filter-group">
+            <button id="applyYearFilter" style="padding: 8px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">Uygula</button>
+        </div>
+        <div class="filter-group">
+            <label for="sectorFilter">Sektör:</label>
+            <select id="sectorFilter">
+                <option value="all">Tümü</option>
+                <option value="insaat">İnşaat</option>
+                <option value="maden">Madencilik</option>
+                <option value="tarim">Tarım</option>
+                <option value="imalat">İmalat</option>
+                <option value="lojistik">Lojistik</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        // Harita başlangıç ayarları - Sakarya merkezli
+        const map = L.map('map').setView([40.7569, 30.4003], 10);
+
+        // OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18,
+        }).addTo(map);
+
+        // Gerçek veriler - Excel dosyasındaki her olay ayrı marker olarak gösterilir
+        // Yeni dosya yükleyerek bu veriyi değiştirebilirsiniz
+        let workplaceAccidents = [
+            { city: 'Serdivan, Sakarya', lat: 40.7904, lng: 30.3619, count: 1, sector: 'insaat', sectorName: 'İnşaat', reason: 'Yüksekten düşme', date: '2024-01-15', name: 'Örnek Çalışan' },
+            { city: 'Adapazarı, Sakarya', lat: 40.7731, lng: 30.4000, count: 3, sector: 'tarim', sectorName: 'Tarım', reason: 'Makine sıkışması', date: '2024-02-14', name: 'Adapazarı Örnek 1' },
+            { city: 'Adapazarı, Sakarya', lat: 40.7731, lng: 30.4000, count: 1, sector: 'insaat', sectorName: 'İnşaat', reason: 'Elektrik çarpması', date: '2024-05-18', name: 'Adapazarı Örnek 2' },
+            { city: 'Serdivan, Sakarya', lat: 40.7781, lng: 30.3540, count: 3, sector: 'imalat', sectorName: 'İmalat', reason: 'Makine sıkışması', date: '2024-06-16', name: 'Serdivan Örnek 1' },
+            { city: 'Serdivan, Sakarya', lat: 40.7781, lng: 30.3540, count: 3, sector: 'lojistik', sectorName: 'Lojistik', reason: 'Yüksekten düşme', date: '2024-06-19', name: 'Serdivan Örnek 2' },
+            { city: 'Erenler, Sakarya', lat: 40.7569, lng: 30.4023, count: 1, sector: 'insaat', sectorName: 'İnşaat', reason: 'Makine sıkışması', date: '2024-04-05', name: 'Erenler Örnek 1' },
+            { city: 'Erenler, Sakarya', lat: 40.7569, lng: 30.4023, count: 3, sector: 'imalat', sectorName: 'İmalat', reason: 'Yüksekten düşme', date: '2024-04-24', name: 'Erenler Örnek 2' },
+            { city: 'Arifiye, Sakarya', lat: 40.7140, lng: 30.3960, count: 3, sector: 'lojistik', sectorName: 'Lojistik', reason: 'Makine sıkışması', date: '2024-01-03', name: 'Arifiye Örnek 1' },
+            { city: 'Arifiye, Sakarya', lat: 40.7140, lng: 30.3960, count: 1, sector: 'maden', sectorName: 'Madencilik', reason: 'Makine sıkışması', date: '2024-05-02', name: 'Arifiye Örnek 2' },
+            { city: 'Sapanca, Sakarya', lat: 40.6910, lng: 30.2670, count: 2, sector: 'lojistik', sectorName: 'Lojistik', reason: 'Servis aracı kazası', date: '2024-02-23', name: 'Sapanca Örnek 1' },
+            { city: 'Sapanca, Sakarya', lat: 40.6910, lng: 30.2670, count: 1, sector: 'insaat', sectorName: 'İnşaat', reason: 'Malzeme çarpması', date: '2024-03-26', name: 'Sapanca Örnek 2' },
+            { city: 'Akyazı, Sakarya', lat: 40.6865, lng: 30.6227, count: 1, sector: 'lojistik', sectorName: 'Lojistik', reason: 'Servis aracı kazası', date: '2024-06-12', name: 'Akyazı Örnek 1' },
+            { city: 'Akyazı, Sakarya', lat: 40.6865, lng: 30.6227, count: 2, sector: 'tarim', sectorName: 'Tarım', reason: 'Yüksekten düşme', date: '2024-06-21', name: 'Akyazı Örnek 2' },
+            { city: 'Hendek, Sakarya', lat: 40.7994, lng: 30.7486, count: 1, sector: 'insaat', sectorName: 'İnşaat', reason: 'Yüksekten düşme', date: '2024-03-30', name: 'Hendek Örnek 1' },
+            { city: 'Hendek, Sakarya', lat: 40.7994, lng: 30.7486, count: 1, sector: 'lojistik', sectorName: 'Lojistik', reason: 'Elektrik çarpması', date: '2024-06-11', name: 'Hendek Örnek 2' },
+            { city: 'Karasu, Sakarya', lat: 41.0711, lng: 30.7860, count: 1, sector: 'insaat', sectorName: 'İnşaat', reason: 'Elektrik çarpması', date: '2024-04-30', name: 'Karasu Örnek 1' },
+            { city: 'Karasu, Sakarya', lat: 41.0711, lng: 30.7860, count: 1, sector: 'tarim', sectorName: 'Tarım', reason: 'Makine sıkışması', date: '2024-01-05', name: 'Karasu Örnek 2' },
+            { city: 'Kocaali, Sakarya', lat: 41.0531, lng: 30.8500, count: 1, sector: 'lojistik', sectorName: 'Lojistik', reason: 'Servis aracı kazası', date: '2024-01-29', name: 'Kocaali Örnek 1' },
+            { city: 'Kocaali, Sakarya', lat: 41.0531, lng: 30.8500, count: 2, sector: 'maden', sectorName: 'Madencilik', reason: 'Yüksekten düşme', date: '2024-01-12', name: 'Kocaali Örnek 2' },
+            { city: 'Pamukova, Sakarya', lat: 40.5119, lng: 30.1677, count: 3, sector: 'maden', sectorName: 'Madencilik', reason: 'Servis aracı kazası', date: '2024-05-27', name: 'Pamukova Örnek 1' },
+            { city: 'Pamukova, Sakarya', lat: 40.5119, lng: 30.1677, count: 1, sector: 'insaat', sectorName: 'İnşaat', reason: 'Servis aracı kazası', date: '2024-04-13', name: 'Pamukova Örnek 2' },
+            { city: 'Geyve, Sakarya', lat: 40.5075, lng: 30.2925, count: 1, sector: 'lojistik', sectorName: 'Lojistik', reason: 'Elektrik çarpması', date: '2024-06-06', name: 'Geyve Örnek 1' },
+            { city: 'Geyve, Sakarya', lat: 40.5075, lng: 30.2925, count: 1, sector: 'lojistik', sectorName: 'Lojistik', reason: 'Makine sıkışması', date: '2024-06-29', name: 'Geyve Örnek 2' },
+            { city: 'Taraklı, Sakarya', lat: 40.3961, lng: 30.4931, count: 5, sector: 'imalat', sectorName: 'İmalat', reason: 'Malzeme çarpması', date: '2024-03-14', name: 'Taraklı Örnek 1' },
+            { city: 'Taraklı, Sakarya', lat: 40.3961, lng: 30.4931, count: 2, sector: 'tarim', sectorName: 'Tarım', reason: 'Yüksekten düşme', date: '2024-04-04', name: 'Taraklı Örnek 2' },
+            { city: 'Söğütlü, Sakarya', lat: 40.9020, lng: 30.4440, count: 1, sector: 'tarim', sectorName: 'Tarım', reason: 'Servis aracı kazası', date: '2024-04-13', name: 'Söğütlü Örnek 1' },
+            { city: 'Söğütlü, Sakarya', lat: 40.9020, lng: 30.4440, count: 1, sector: 'imalat', sectorName: 'İmalat', reason: 'Servis aracı kazası', date: '2024-06-28', name: 'Söğütlü Örnek 2' },
+            { city: 'Ferizli, Sakarya', lat: 40.9400, lng: 30.4830, count: 2, sector: 'tarim', sectorName: 'Tarım', reason: 'Yüksekten düşme', date: '2024-04-15', name: 'Ferizli Örnek 1' },
+            { city: 'Ferizli, Sakarya', lat: 40.9400, lng: 30.4830, count: 1, sector: 'tarim', sectorName: 'Tarım', reason: 'Yüksekten düşme', date: '2024-04-15', name: 'Ferizli Örnek 2' },
+            { city: 'Kaynarca, Sakarya', lat: 41.0345, lng: 30.3115, count: 1, sector: 'insaat', sectorName: 'İnşaat', reason: 'Yüksekten düşme', date: '2024-06-18', name: 'Kaynarca Örnek 1' },
+            { city: 'Kaynarca, Sakarya', lat: 41.0345, lng: 30.3115, count: 1, sector: 'insaat', sectorName: 'İnşaat', reason: 'Malzeme çarpması', date: '2024-01-11', name: 'Kaynarca Örnek 2' }
+        ];
+
+        let markers = [];
+        let markerClusterGroup;
+
+        // GitHub'dan veri yükleme fonksiyonu
+        async function loadGithubData() {
+            const githubUrl = 'https://raw.githubusercontent.com/suacalis/is_cinayetleri/refs/heads/main/veri_turkiye.csv';
+            const button = document.getElementById('loadGithubData');
+            
+            try {
+                // Buton durumunu değiştir
+                button.disabled = true;
+                button.textContent = '⏳ Yükleniyor...';
+                button.style.background = '#95a5a6';
+                
+                // CSV dosyasını fetch et
+                const response = await fetch(githubUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const csvText = await response.text();
+                
+                // CSV'yi parse et
+                const lines = csvText.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim());
+                
+                const data = [];
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim()) {
+                        const values = lines[i].split(',');
+                        const row = {};
+                        headers.forEach((header, index) => {
+                            row[header] = values[index] ? values[index].trim() : '';
+                        });
+                        data.push(row);
+                    }
+                }
+                
+                // Veriyi harita formatına dönüştür
+                const newAccidents = parseUploadedData(data);
+                
+                if (newAccidents.length > 0) {
+                    // Global veriyi güncelle
+                    workplaceAccidents.length = 0;
+                    workplaceAccidents.push(...newAccidents);
+                    
+                    // Haritayı güncelle - tüm yılları göster
+                    document.getElementById('allYears').checked = true;
+                    toggleYearInputs();
+                    filterData();
+                    
+                    // Başarı mesajı
+                    alert(`✅ Başarılı! GitHub'dan ${newAccidents.length} olay yüklendi.\nToplam ${newAccidents.reduce((sum, acc) => sum + acc.count, 0)} ölü.`);
+                    
+                    // Dosya adını göster
+                    document.getElementById('fileName').textContent = 'Yüklendi: veri_turkiye.csv (GitHub)';
+                } else {
+                    alert('❌ GitHub verisinde geçerli veri bulunamadı.');
+                }
+                
+            } catch (error) {
+                console.error('GitHub veri yükleme hatası:', error);
+                alert(`❌ GitHub'dan veri yüklenirken hata oluştu:\n${error.message}\n\nLütfen internet bağlantınızı kontrol edin.`);
+            } finally {
+                // Buton durumunu eski haline getir
+                button.disabled = false;
+                button.textContent = '📊 GitHub\'dan Veri Yükle';
+                button.style.background = '#e74c3c';
+            }
+        }
+
+        // Dosya yükleme ve işleme fonksiyonu
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Dosya adını göster
+            document.getElementById('fileName').textContent = `Yüklendi: ${file.name}`;
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    let data;
+                    const fileName = file.name.toLowerCase();
+
+                    if (fileName.endsWith('.csv')) {
+                        // CSV dosyası işleme
+                        const text = e.target.result;
+                        const lines = text.split('\n');
+                        const headers = lines[0].split(',').map(h => h.trim());
+                        
+                        data = [];
+                        for (let i = 1; i < lines.length; i++) {
+                            if (lines[i].trim()) {
+                                const values = lines[i].split(',');
+                                const row = {};
+                                headers.forEach((header, index) => {
+                                    row[header] = values[index] ? values[index].trim() : '';
+                                });
+                                data.push(row);
+                            }
+                        }
+                    } else {
+                        // Excel dosyası işleme
+                        const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        data = XLSX.utils.sheet_to_json(worksheet);
+                    }
+
+                    // Veriyi harita formatına dönüştür
+                    const newAccidents = parseUploadedData(data);
+                    
+                    if (newAccidents.length > 0) {
+                        // Global veriyi güncelle
+                        workplaceAccidents.length = 0;
+                        workplaceAccidents.push(...newAccidents);
+                        
+                        // Haritayı güncelle
+                        filterData();
+                        
+                        alert(`Başarılı! ${newAccidents.length} olay yüklendi. Toplam ${newAccidents.reduce((sum, acc) => sum + acc.count, 0)} ölü.`);
+                    } else {
+                        alert('Dosyada geçerli veri bulunamadı. Lütfen dosya formatını kontrol edin.');
+                    }
+                } catch (error) {
+                    console.error('Dosya okuma hatası:', error);
+                    alert('Dosya işlenirken hata oluştu: ' + error.message);
+                }
+            };
+
+            if (file.name.toLowerCase().endsWith('.csv')) {
+                reader.readAsText(file);
+            } else {
+                reader.readAsBinaryString(file);
+            }
+        }
+
+        // Yüklenen veriyi parse etme fonksiyonu
+        function parseUploadedData(data) {
+            const sectorMap = {
+                'İnşaat': 'insaat',
+                'insaat': 'insaat',
+                'Tarım': 'tarim',
+                'tarim': 'tarim',
+                'İmalat': 'imalat',
+                'imalat': 'imalat',
+                'Lojistik': 'lojistik',
+                'lojistik': 'lojistik',
+                'Madencilik': 'maden',
+                'maden': 'maden',
+                'Maden': 'maden'
+            };
+
+            const accidents = [];
+
+            data.forEach(row => {
+                // Kolon adlarını esnek şekilde kontrol et (büyük/küçük harf duyarsız)
+                const keys = Object.keys(row);
+                const getColumn = (possibleNames) => {
+                    const key = keys.find(k => 
+                        possibleNames.some(name => 
+                            k.toLowerCase().includes(name.toLowerCase())
+                        )
+                    );
+                    return key ? row[key] : null;
+                };
+
+                const city = getColumn(['yer', 'city', 'sehir', 'il']);
+                const lat = parseFloat(getColumn(['lat', 'latitude', 'enlem']));
+                const lng = parseFloat(getColumn(['lng', 'longitude', 'boylam', 'long']));
+                const count = parseInt(getColumn(['olum_sayisi', 'olu', 'count', 'death'])) || 1;
+                const sector = getColumn(['sektor', 'sector']);
+                const reason = getColumn(['neden', 'reason', 'sebep']);
+                const name = getColumn(['isim', 'name', 'ad']);
+                const date = getColumn(['tarih', 'date']);
+
+                // Geçerlilik kontrolü
+                if (city && !isNaN(lat) && !isNaN(lng) && sector) {
+                    const sectorCode = sectorMap[sector] || 'diger';
+                    const sectorName = sector.charAt(0).toUpperCase() + sector.slice(1);
+
+                    accidents.push({
+                        city: city,
+                        lat: lat,
+                        lng: lng,
+                        count: count,
+                        sector: sectorCode,
+                        sectorName: sectorName,
+                        reason: reason || 'Belirtilmemiş',
+                        date: date || '',
+                        name: name || ''
+                    });
+                }
+            });
+
+            return accidents;
+        }
+
+        // Marker cluster grubu oluştur
+        function createClusterGroup() {
+            return L.markerClusterGroup({
+                iconCreateFunction: function(cluster) {
+                    // Cluster içindeki tüm markerların ölü sayısını topla
+                    const markers = cluster.getAllChildMarkers();
+                    const totalDeaths = markers.reduce((sum, marker) => {
+                        return sum + (marker.options.deathCount || 0);
+                    }, 0);
+
+                    // Cluster boyutunu ölü sayısına göre belirle
+                    let size = 60;
+                    if (totalDeaths >= 30) size = 80;
+                    else if (totalDeaths >= 20) size = 70;
+                    else if (totalDeaths >= 10) size = 60;
+                    else size = 50;
+
+                    return L.divIcon({
+                        html: `<div class="marker-cluster-custom" style="width: ${size}px; height: ${size}px;">
+                                <div>
+                                    <div class="cluster-count">${totalDeaths}</div>
+                                </div>
+                               </div>`,
+                        className: '',
+                        iconSize: L.point(size, size)
+                    });
+                },
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true,
+                maxClusterRadius: 80
+            });
+        }
+
+        // Marker boyutunu ve rengini belirleme fonksiyonu
+        function getMarkerSize(count) {
+            if (count >= 5) return { size: 50, class: 'marker-critical' };
+            if (count >= 3) return { size: 45, class: 'marker-high' };
+            if (count >= 2) return { size: 40, class: 'marker-medium' };
+            return { size: 35, class: 'marker-low' };
+        }
+
+        // Markerları haritaya ekleme
+        function addMarkers(data) {
+            // Önceki cluster grubunu kaldır
+            if (markerClusterGroup) {
+                map.removeLayer(markerClusterGroup);
+            }
+            
+            // Yeni cluster grubu oluştur
+            markerClusterGroup = createClusterGroup();
+            markers = [];
+
+            data.forEach(accident => {
+                const { size, class: markerClass } = getMarkerSize(accident.count);
+                
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div class="custom-marker ${markerClass}" style="width: ${size}px; height: ${size}px;">${accident.count}</div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2]
+                });
+
+                const marker = L.marker([accident.lat, accident.lng], { 
+                    icon: icon,
+                    deathCount: accident.count // Ölü sayısını marker'a ekle
+                })
+                    .bindPopup(`
+                        <div class="popup-title">${accident.city}</div>
+                        <div class="popup-info"><strong>Ölü Sayısı:</strong> ${accident.count}</div>
+                        <div class="popup-info"><strong>Sektör:</strong> ${accident.sectorName}</div>
+                        <div class="popup-info"><strong>Neden:</strong> ${accident.reason}</div>
+                    `);
+
+                markers.push(marker);
+                markerClusterGroup.addLayer(marker); // Cluster grubuna ekle
+            });
+
+            // Cluster grubunu haritaya ekle
+            map.addLayer(markerClusterGroup);
+            
+            updateStats(data);
+        }
+
+        // Sektör adını getir
+        function getSectorName(sector) {
+            const sectors = {
+                'insaat': 'İnşaat',
+                'maden': 'Madencilik',
+                'tarim': 'Tarım',
+                'imalat': 'İmalat',
+                'lojistik': 'Lojistik'
+            };
+            return sectors[sector] || sector;
+        }
+
+        // Filtreleme fonksiyonu
+        function filterData() {
+            const sectorFilter = document.getElementById('sectorFilter').value;
+            const allYears = document.getElementById('allYears').checked;
+            const startYear = parseInt(document.getElementById('startYear').value);
+            const endYear = parseInt(document.getElementById('endYear').value);
+            
+            let filteredData = workplaceAccidents;
+
+            // Sektör filtresi
+            if (sectorFilter !== 'all') {
+                filteredData = filteredData.filter(accident => accident.sector === sectorFilter);
+            }
+
+            // Yıl aralığı filtresi (sadece "Tümü" seçili değilse)
+            if (!allYears && !isNaN(startYear) && !isNaN(endYear)) {
+                filteredData = filteredData.filter(accident => {
+                    if (!accident.date) return true; // Tarih yoksa göster
+                    const year = parseInt(accident.date.toString().substring(0, 4));
+                    return year >= startYear && year <= endYear;
+                });
+            }
+
+            addMarkers(filteredData);
+        }
+
+        // Yıl input'larını aktif/pasif yapma
+        function toggleYearInputs() {
+            const allYears = document.getElementById('allYears').checked;
+            const startYearInput = document.getElementById('startYear');
+            const endYearInput = document.getElementById('endYear');
+            
+            startYearInput.disabled = allYears;
+            endYearInput.disabled = allYears;
+            
+            if (allYears) {
+                startYearInput.style.opacity = '0.5';
+                endYearInput.style.opacity = '0.5';
+                startYearInput.style.cursor = 'not-allowed';
+                endYearInput.style.cursor = 'not-allowed';
+            } else {
+                startYearInput.style.opacity = '1';
+                endYearInput.style.opacity = '1';
+                startYearInput.style.cursor = 'text';
+                endYearInput.style.cursor = 'text';
+            }
+        }
+
+        // İstatistikleri güncelle
+        function updateStats(data) {
+            const totalDeaths = data.reduce((sum, accident) => sum + accident.count, 0);
+            const avgPerIncident = (totalDeaths / data.length).toFixed(1);
+            
+            // Mevcut istatistik panelini kaldır
+            const existingStats = document.querySelector('.leaflet-control.stats');
+            if (existingStats) {
+                existingStats.remove();
+            }
+
+            // Yeni istatistik paneli oluştur
+            const statsControl = L.control({ position: 'topright' });
+            statsControl.onAdd = function() {
+                const div = L.DomUtil.create('div', 'stats');
+                div.innerHTML = `
+                    <h4>📊 İstatistikler</h4>
+                    <div class="stat-item"><strong>Toplam Ölü:</strong> ${totalDeaths}</div>
+                    <div class="stat-item"><strong>Olay Sayısı:</strong> ${data.length}</div>
+                    <div class="stat-item"><strong>Olay Başına Ort:</strong> ${avgPerIncident}</div>
+                `;
+                return div;
+            };
+            statsControl.addTo(map);
+        }
+
+        // Lejant oluşturma
+        const legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function() {
+            const div = L.DomUtil.create('div', 'legend');
+            div.innerHTML = `
+                <h4>📍 Ölü Sayısı</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #8e44ad;"></div>
+                    <span>5+ (Kritik)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #c0392b;"></div>
+                    <span>3-4 (Yüksek)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #e67e22;"></div>
+                    <span>2 (Orta)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #f39c12;"></div>
+                    <span>1 (Düşük)</span>
+                </div>
+            `;
+            return div;
+        };
+        legend.addTo(map);
+
+        // İl arama fonksiyonu
+        function searchCity() {
+            const searchTerm = document.getElementById('citySearch').value.trim();
+            
+            if (!searchTerm) {
+                alert('Lütfen bir il adı girin!');
+                return;
+            }
+
+            // Türkçe karakterleri normalize et
+            const normalizeText = (text) => {
+                return text.toLowerCase()
+                    .replace(/ğ/g, 'g')
+                    .replace(/ü/g, 'u')
+                    .replace(/ş/g, 's')
+                    .replace(/ı/g, 'i')
+                    .replace(/ö/g, 'o')
+                    .replace(/ç/g, 'c');
+            };
+
+            const normalizedSearch = normalizeText(searchTerm);
+
+            // Şehri bul
+            const foundCity = workplaceAccidents.find(accident => 
+                normalizeText(accident.city).includes(normalizedSearch)
+            );
+
+            if (foundCity) {
+                // Haritayı şehre odakla (zoom seviyesini artır)
+                map.setView([foundCity.lat, foundCity.lng], 13);
+                
+                // İlgili marker'ı bul ve popup'ı aç
+                setTimeout(() => {
+                    markers.forEach(marker => {
+                        const markerLatLng = marker.getLatLng();
+                        if (Math.abs(markerLatLng.lat - foundCity.lat) < 0.001 && 
+                            Math.abs(markerLatLng.lng - foundCity.lng) < 0.001) {
+                            marker.openPopup();
+                        }
+                    });
+                }, 500); // Cluster açılması için kısa bir gecikme
+            } else {
+                alert(`"${searchTerm}" ili bulunamadı. Lütfen farklı bir il adı deneyin.`);
+            }
+        }
+
+        // Yıl aralığı doğrulama
+        function validateYearRange() {
+            const allYears = document.getElementById('allYears').checked;
+            if (allYears) return true; // Tümü seçiliyse doğrulama yapma
+            
+            const startYear = parseInt(document.getElementById('startYear').value);
+            const endYear = parseInt(document.getElementById('endYear').value);
+            
+            if (!isNaN(startYear) && !isNaN(endYear) && startYear > endYear) {
+                alert('Başlangıç yılı, bitiş yılından büyük olamaz!');
+                document.getElementById('startYear').value = endYear;
+                return false;
+            }
+            return true;
+        }
+
+        // Event listeners
+        document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
+        document.getElementById('loadGithubData').addEventListener('click', loadGithubData);
+        document.getElementById('searchBtn').addEventListener('click', searchCity);
+        document.getElementById('citySearch').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchCity();
+            }
+        });
+        
+        // "Tümü" checkbox
+        document.getElementById('allYears').addEventListener('change', function() {
+            toggleYearInputs();
+            filterData();
+        });
+        
+        // Yıl input'larında değişiklik olduğunda "Tümü"yü kaldır
+        document.getElementById('startYear').addEventListener('input', function() {
+            if (this.value) {
+                document.getElementById('allYears').checked = false;
+                toggleYearInputs();
+            }
+        });
+        
+        document.getElementById('endYear').addEventListener('input', function() {
+            if (this.value) {
+                document.getElementById('allYears').checked = false;
+                toggleYearInputs();
+            }
+        });
+        
+        // Yıl filtresi uygulama butonu
+        document.getElementById('applyYearFilter').addEventListener('click', function() {
+            if (validateYearRange()) {
+                filterData();
+            }
+        });
+        
+        // Yıl inputlarında Enter tuşu ile uygulama
+        document.getElementById('startYear').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && validateYearRange()) {
+                filterData();
+            }
+        });
+        
+        document.getElementById('endYear').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && validateYearRange()) {
+                filterData();
+            }
+        });
+        
+        document.getElementById('sectorFilter').addEventListener('change', filterData);
+
+        // Sayfa yüklendiğinde başlangıç durumu
+        toggleYearInputs();
+        
+        // İlk yükleme
+        addMarkers(workplaceAccidents);
+    </script>
+</body>
+</html>
