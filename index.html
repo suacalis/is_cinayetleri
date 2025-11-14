@@ -503,10 +503,67 @@
 
     <script>
         // Sayfa tamamen yüklendiğinde çalıştır
-        window.onload = function() {
-            let dataSet = [];
-            let map;
-            let markers;
+        // YENİ: Google Sheets'ten CSV yükleme fonksiyonu
+async function loadFromGoogleSheets() {
+    const sheetsUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQKASlDXH2wqdJ8FVg-PznIzA_xwoQpeZwy2FZXW8V6qXclb0OiXQx7jIMzlUXYyQ/pub?gid=1526423112&single=true&output=csv';
+    
+    document.getElementById('fileName').textContent = 'Google Sheets\'ten yükleniyor...';
+    
+    try {
+        const response = await fetch(sheetsUrl);
+        if (!response.ok) throw new Error('Veri yüklenemedi');
+        
+        const csvText = await response.text();
+        
+        // CSV'yi parse et
+        const workbook = XLSX.read(csvText, { type: 'string' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+        
+        // Veriyi işle
+        dataSet = jsonData.map(row => ({
+            isim: row.isim || row.İsim || '',
+            tarih: row.tarih || row.Tarih || '',
+            yer: row.yer || row.Yer || '',
+            lat: parseFloat(row.lat || row.Lat || row.LAT || 0),
+            lng: parseFloat(row.lng || row.Lng || row.LNG || 0),
+            neden: row.neden || row.Neden || '',
+            sektor: row.sektor || row.Sektör || row.Sektor || 'Diğer',
+            link: row.link || row.Link || '',
+            olum_sayisi: parseInt(row.olum_sayisi || row.Olum_Sayisi || row.OlumSayisi || 1)
+        }));
+
+        // İl/İlçe filtresini doldur
+        const districts = new Set();
+        dataSet.forEach(item => {
+            if (item.yer) {
+                const parts = item.yer.split(',');
+                const district = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+                districts.add(district);
+            }
+        });
+
+        const cityFilter = document.getElementById('cityFilter');
+        cityFilter.innerHTML = '<option value="">Tümü</option>';
+        Array.from(districts).sort().forEach(district => {
+            const option = document.createElement('option');
+            option.value = district;
+            option.textContent = district;
+            cityFilter.appendChild(option);
+        });
+
+        createMarkers(dataSet);
+        document.getElementById('fileName').textContent = `Google Sheets - ${dataSet.length} kayıt yüklendi`;
+        
+    } catch (error) {
+        alert('Google Sheets verisi yüklenirken hata oluştu: ' + error.message);
+        document.getElementById('fileName').textContent = 'Yükleme başarısız';
+        console.error('Hata:', error);
+    }
+}
+
+// Google Sheets butonuna tıklama olayı
+document.getElementById('loadFromSheets').addEventListener('click', loadFromGoogleSheets);
 
             // Marker cluster grubunu ÖLÜM SAYISINA GÖRE GÜNCELLE
             markers = L.markerClusterGroup({
