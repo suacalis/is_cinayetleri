@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Türkiye İş Kazaları Haritası</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        #header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        #fileUpload {
+            background: white;
+            padding: 12px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.3s;
+            display: inline-block;
+        }
+
+        .file-input-label:hover {
+            background: #5568d3;
+        }
+
+        #fileName {
+            font-size: 13px;
+            color: #666;
+            font-style: italic;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        #downloadTemplate {
+            padding: 8px 16px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        #downloadTemplate:hover {
+            background: #229954;
+        }
+
+        #controls {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 11px;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        input[type="text"], input[type="date"], select {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, input[type="date"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        input[type="text"] {
+            width: 250px;
+        }
+
+        button {
+            padding: 8px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.3s;
+            margin-top: auto;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button.reset {
+            background: #e74c3c;
+        }
+
+        button.reset:hover {
+            background: #c0392b;
+        }
+
+        #map {
+            flex: 1;
+            width: 100%;
+            min-height: 500px;
+            position: relative;
+            background-color: #e8e8e8;
+            /* GÜNCELLENEN KISIM: Gri tonlama kaldırıldı, sadece kontrast kaldı */
+            filter: contrast(110%); 
+        }
+
+        #main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #map-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        #stats-section {
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+            border-left: 2px solid #e0e0e0;
+            overflow-y: auto;
+        }
+
+        #stats-header {
+            background: white;
+            padding: 12px 15px;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            gap: 20px;
+            flex-shrink: 0;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        /* Ek İstatistik Kartları ve Grafik Stilleri (Önceki Adımlardan) */
+        #infographic-side {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .info-cards-side {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .info-card-side {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .card-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .card-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .chart-section {
+            margin-bottom: 25px;
+        }
+
+        .chart-section h3 {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .chart-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .chart-label {
+            min-width: 100px;
+            font-size: 12px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .chart-bar-container {
+            flex: 1;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .chart-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        .chart-value {
+            min-width: 30px;
+            text-align: right;
+            font-weight: bold;
+            color: #667eea;
+            font-size: 13px;
+        }
+        
+        /* Popup ve Cluster Stilleri */
+        .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .leaflet-popup-content {
+            margin: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .popup-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .popup-info {
+            margin-bottom: 6px;
+            padding: 4px 0;
+        }
+
+        .popup-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .popup-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 6px 12px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: background 0.3s;
+        }
+
+        .popup-link:hover {
+            background: #5568d3;
+        }
+        
+        /* Cluster renkleri, ölüm sayısına göre atanacak */
+        /* Bu renkler artık JS tarafından sınıflandırmaya göre atanacak */
+
+        @media (max-width: 1024px) {
+            #stats-section {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #header h1 {
+                font-size: 18px;
+            }
+
+            #controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            input[type="text"] {
+                width: 100%;
+            }
+
+            .control-group {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🇹🇷 Türkiye İş Kazaları Haritası</h1>
+    </div>
+
+    <div id="fileUpload">
+        <div class="file-input-wrapper">
+            <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" />
+            <label for="excelFile" class="file-input-label">📁 Excel/CSV Dosyası Seç</label>
+        </div>
+        <span id="fileName">Henüz dosya seçilmedi</span>
+        <a href="#" id="downloadTemplate" title="Şablon indir">📥 Şablon İndir</a>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <label for="searchBox">🔍 Ara</label>
+            <input type="text" id="searchBox" placeholder="İsim, yer veya neden ara...">
+        </div>
+
+        <div class="control-group">
+            <label for="startDate">📅 Başlangıç Tarihi</label>
+            <input type="date" id="startDate">
+        </div>
+
+        <div class="control-group">
+            <label for="endDate">📅 Bitiş Tarihi</label>
+            <input type="date" id="endDate">
+        </div>
+
+        <div class="control-group">
+            <label for="cityFilter">🏙️ İl/İlçe</label>
+            <select id="cityFilter">
+                <option value="">Tümü</option>
+            </select>
+        </div>
+
+        <button onclick="window.applyFilters()">Filtrele</button>
+        <button class="reset" onclick="window.resetFilters()">Sıfırla</button>
+    </div>
+
+    <div id="main-container">
+        <div id="map-section">
+            <div id="map"></div>
+        </div>
+
+        <div id="stats-section">
+            <div id="stats-header">
+                <div class="stat-item">
+                    <span class="stat-label">Toplam Kaza</span>
+                    <span class="stat-value" id="totalRecords">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Gösterilen Kaza</span>
+                    <span class="stat-value" id="displayedRecords">0</span>
+                </div>
+            </div>
+
+            <div id="infographic-side">
+                <div class="info-cards-side">
+                    <div class="info-card-side">
+                        <div class="card-label">En Çok Kaza</div>
+                        <div class="card-value" id="topCity">-</div>
+                    </div>
+                    <div class="info-card-side">
+                        <div class="card-label">En Yaygın Neden</div>
+                        <div class="card-value" id="topReason">-</div>
+                    </div>
+                    <div class="info-card-side">
+                        <div class="card-label">En Riskli Sektör</div>
+                        <div class="card-value" id="topSector">-</div>
+                    </div>
+                    <div class="info-card-side">
+                        <div class="card-label">En Yoğun Ay</div>
+                        <div class="card-value" id="topMonth">-</div>
+                    </div>
+                    <div class="info-card-side">
+                        <div class="card-label">Kapsanan Bölge</div>
+                        <div class="card-value" id="cityCount">-</div>
+                    </div>
+                </div>
+
+                <div class="chart-section">
+                    <h3>📍 İl/İlçe Dağılımı</h3>
+                    <div class="chart-container" id="cityChart"></div>
+                </div>
+
+                <div class="chart-section">
+                    <h3>🏭 Sektör Dağılımı</h3>
+                    <div class="chart-container" id="sectorChart"></div>
+                </div>
+
+                <div class="chart-section">
+                    <h3>⚠️ Kaza Nedenleri</h3>
+                    <div class="chart-container" id="reasonChart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        // Sayfa tamamen yüklendiğinde çalıştır
+        window.onload = function() {
+            let dataSet = [];
+            let map;
+            let markers;
+
+            // Marker cluster grubunu ÖLÜM SAYISINA GÖRE GÜNCELLE
+            markers = L.markerClusterGroup({
+                maxClusterRadius: 55,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true,
+                
+                // KÜME İKONUNU ÖZELLEŞTİREN ANA FONKSİYON
+                iconCreateFunction: function(cluster) {
+                    // 1. Kümedeki toplam ölüm sayısını hesapla
+                    let totalDeaths = 0;
+                    const markersInCluster = cluster.getAllChildMarkers();
+                    markersInCluster.forEach(function(marker) {
+                        // marker'a eklediğimiz olum_sayisi özelliğini kullan
+                        totalDeaths += marker.olum_sayisi || 1; 
+                    });
+
+                    // 2. Küme boyutunu ölüm sayısına göre ayarla
+                    let size;
+                    let className;
+                    
+                    // Toplam ölüm sayısına göre küme boyutunu ve rengini ayarla
+                    if (totalDeaths < 5) {
+                        size = 35;
+                        className = 'marker-cluster-small';
+                    } else if (totalDeaths < 20) {
+                        size = 45;
+                        className = 'marker-cluster-medium';
+                    } else {
+                        size = 55;
+                        className = 'marker-cluster-large';
+                    }
+                    
+                    // CSS renklerini buraya hardcode edebiliriz
+                    let color = '#667eea'; // Varsayılan: Mavi
+                    if (className === 'marker-cluster-medium') {
+                        color = '#e74c3c'; // Kırmızıya yakın
+                    } else if (className === 'marker-cluster-large') {
+                        color = '#c0392b'; // Koyu Kırmızı
+                    }
+
+
+                    // 3. Özel div icon oluştur (İçinde toplam ölüm sayısı yazar)
+                    return L.divIcon({
+                        html: `<div style="background-color: ${color}; 
+                                color: white;
+                                width: 100%; 
+                                height: 100%;
+                                border-radius: 50%;
+                                font-size: 14px; 
+                                font-weight: bold;
+                                line-height: ${size}px;
+                                text-align: center;">${totalDeaths}</div>`,
+                        className: 'marker-cluster', // MarkerCluster kütüphanesi bu sınıfı bekler
+                        iconSize: new L.Point(size, size)
+                    });
+                }
+            });
+
+            // Haritayı oluştur - Türkiye merkezli
+            map = L.map('map').setView([39.0, 35.0], 6);
+
+            // Daha sade bir harita arka planı için CartoDB Positron'ı kullan
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors, © CartoDB',
+                maxZoom: 18
+            }).addTo(map);
+            
+            // Harita üzerinde markerları oluştur
+            function createMarkers(data) {
+                map.removeLayer(markers);
+                markers.clearLayers();
+                const allMarkers = [];
+
+                data.forEach(item => {
+                    if (!item.lat || !item.lng) return;
+
+                    // Ölüm sayısını al ve marker boyutunu hesapla
+                    const deathCount = parseInt(item.olum_sayisi) || 1;
+                    const baseSize = 12;
+                    const maxAdditionalSize = 35; 
+                    let markerSize = baseSize + Math.min(deathCount * 4, maxAdditionalSize); 
+                    
+                    const marker = L.marker([item.lat, item.lng], {
+                        icon: L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div style="background-color: #e74c3c; 
+                                    width: ${markerSize}px; 
+                                    height: ${markerSize}px; 
+                                    border-radius: 50%; 
+                                    border: 2px solid white; 
+                                    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                                    font-weight: bold;
+                                    color: white;
+                                    line-height: ${markerSize}px;
+                                    text-align: center;
+                                    font-size: ${Math.max(10, markerSize * 0.4)}px;
+                                    ">${deathCount}</div>`, 
+                            iconSize: [markerSize, markerSize],
+                            iconAnchor: [markerSize / 2, markerSize / 2]
+                        })
+                    });
+
+                    // ÖLÜM SAYISINI MARKER OBJESİNE EKLE (Cluster ikonu için gerekli)
+                    marker.olum_sayisi = deathCount; 
+
+                    // Popup içeriği: Ölü sayısı eklendi
+                    const popupContent = `
+                        <div class="popup-title">${item.isim}</div>
+                        <div class="popup-info">
+                            <span class="popup-label">💀 Ölü Sayısı:</span> ${deathCount}
+                        </div>
+                        <div class="popup-info">
+                            <span class="popup-label">📅 Tarih:</span> ${formatDate(item.tarih)}
+                        </div>
+                        <div class="popup-info">
+                            <span class="popup-label">📍 Yer:</span> ${item.yer}
+                        </div>
+                        <div class="popup-info">
+                            <span class="popup-label">🏭 Sektör:</span> ${item.sektor}
+                        </div>
+                        <div class="popup-info">
+                            <span class="popup-label">⚠️ Neden:</span> ${item.neden}
+                        </div>
+                        ${item.link ? `<a href="${item.link}" target="_blank" class="popup-link">🔗 Haberi Oku</a>` : ''}
+                    `;
+                    
+                    marker.bindPopup(popupContent);
+                    marker.data = item;
+                    allMarkers.push(marker);
+                    markers.addLayer(marker);
+                });
+
+                map.addLayer(markers);
+                
+                // Haritayı tüm markerları gösterecek şekilde otomatik ayarla
+                if (data.length > 0) {
+                    const group = new L.featureGroup(allMarkers);
+                    map.fitBounds(group.getBounds().pad(0.1), {
+                        maxZoom: 10,
+                        animate: true,
+                        duration: 1.0
+                    });
+                }
+                
+                updateStats(data.length);
+            }
+
+            // Tarih formatlama
+            function formatDate(dateString) {
+                if (!dateString) return 'Bilinmiyor';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('tr-TR', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+            }
+
+            // İstatistikleri güncelle
+            function updateStats(displayed) {
+                document.getElementById('totalRecords').textContent = dataSet.length;
+                document.getElementById('displayedRecords').textContent = displayed;
+                
+                if (displayed > 0) {
+                    generateInfographic(dataSet.filter((item) => {
+                        const searchText = document.getElementById('searchBox').value.toLowerCase();
+                        const startDate = document.getElementById('startDate').value;
+                        const endDate = document.getElementById('endDate').value;
+                        const district = document.getElementById('cityFilter').value;
+
+                        const matchSearch = !searchText || 
+                            item.isim.toLowerCase().includes(searchText) ||
+                            item.yer.toLowerCase().includes(searchText) ||
+                            item.neden.toLowerCase().includes(searchText);
+
+                        const matchStartDate = !startDate || item.tarih >= startDate;
+                        const matchEndDate = !endDate || item.tarih <= endDate;
+
+                        const itemDistrict = item.yer.split(',').length > 1 ? 
+                            item.yer.split(',')[1].trim() : item.yer.split(',')[0].trim();
+                        const matchDistrict = !district || itemDistrict === district;
+
+                        return matchSearch && matchStartDate && matchEndDate && matchDistrict;
+                    }));
+                }
+            }
+
+            // İnfografik oluştur
+            function generateInfographic(data) {
+                if (data.length === 0) {
+                    return;
+                }
+
+                // İl/İlçe analizi
+                const districtData = {};
+                data.forEach(item => {
+                    const parts = item.yer.split(',');
+                    const district = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+                    districtData[district] = (districtData[district] || 0) + item.olum_sayisi; // Toplam ölüm sayısına göre hesapla
+                });
+
+                const topDistricts = Object.entries(districtData)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
+
+                // Sektör analizi
+                const sectorData = {};
+                data.forEach(item => {
+                    const sector = item.sektor || 'Diğer';
+                    sectorData[sector] = (sectorData[sector] || 0) + item.olum_sayisi; // Toplam ölüm sayısına göre hesapla
+                });
+
+                const topSectors = Object.entries(sectorData)
+                    .sort((a, b) => b[1] - a[1]);
+
+                // Neden analizi
+                const reasonData = {};
+                data.forEach(item => {
+                    const reason = item.neden.substring(0, 30);
+                    reasonData[reason] = (reasonData[reason] || 0) + item.olum_sayisi; // Toplam ölüm sayısına göre hesapla
+                });
+
+                const topReasons = Object.entries(reasonData)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5);
+
+                // Ay analizi
+                const monthData = {};
+                const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
+                                  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+                data.forEach(item => {
+                    if (item.tarih) {
+                        const month = new Date(item.tarih).getMonth();
+                        const monthName = monthNames[month];
+                        monthData[monthName] = (monthData[monthName] || 0) + item.olum_sayisi; // Toplam ölüm sayısına göre hesapla
+                    }
+                });
+
+                const topMonth = Object.entries(monthData)
+                    .sort((a, b) => b[1] - a[1])[0];
+
+                // Kartları güncelle
+                document.getElementById('topCity').textContent = 
+                    topDistricts[0] ? `${topDistricts[0][0]} (${topDistricts[0][1]} Ölüm)` : '-';
+                document.getElementById('topReason').textContent = 
+                    topReasons[0] ? `${topReasons[0][0]}... (${topReasons[0][1]} Ölüm)` : '-';
+                document.getElementById('topSector').textContent = 
+                    topSectors[0] ? `${topSectors[0][0]} (${topSectors[0][1]} Ölüm)` : '-';
+                document.getElementById('topMonth').textContent = 
+                    topMonth ? `${topMonth[0]} (${topMonth[1]} Ölüm)` : '-';
+                document.getElementById('cityCount').textContent = 
+                    `${Object.keys(districtData).length} İl/İlçe`;
+
+                // İl/İlçe grafiği
+                const maxDistrictValue = topDistricts[0] ? topDistricts[0][1] : 1;
+                let districtChartHTML = '';
+                topDistricts.forEach(([district, count]) => {
+                    const percentage = (count / maxDistrictValue) * 100;
+                    districtChartHTML += `
+                        <div class="chart-item">
+                            <div class="chart-label">${district}</div>
+                            <div class="chart-bar-container">
+                                <div class="chart-bar" style="width: ${percentage}%"></div>
+                            </div>
+                            <div class="chart-value">${count}</div>
+                        </div>
+                    `;
+                });
+                document.getElementById('cityChart').innerHTML = districtChartHTML;
+
+                // Sektör grafiği
+                const maxSectorValue = topSectors[0] ? topSectors[0][1] : 1;
+                let sectorChartHTML = '';
+                topSectors.forEach(([sector, count]) => {
+                    const percentage = (count / maxSectorValue) * 100;
+                    sectorChartHTML += `
+                        <div class="chart-item">
+                            <div class="chart-label">${sector}</div>
+                            <div class="chart-bar-container">
+                                <div class="chart-bar" style="width: ${percentage}%"></div>
+                            </div>
+                            <div class="chart-value">${count}</div>
+                        </div>
+                    `;
+                });
+                document.getElementById('sectorChart').innerHTML = sectorChartHTML;
+
+                // Neden grafiği
+                const maxReasonValue = topReasons[0] ? topReasons[0][1] : 1;
+                let reasonChartHTML = '';
+                topReasons.forEach(([reason, count]) => {
+                    const percentage = (count / maxReasonValue) * 100;
+                    reasonChartHTML += `
+                        <div class="chart-item">
+                            <div class="chart-label">${reason}...</div>
+                            <div class="chart-bar-container">
+                                <div class="chart-bar" style="width: ${percentage}%"></div>
+                            </div>
+                            <div class="chart-value">${count}</div>
+                        </div>
+                    `;
+                });
+                document.getElementById('reasonChart').innerHTML = reasonChartHTML;
+            }
+
+            // Filtreleri uygula
+            window.applyFilters = function() {
+                const searchText = document.getElementById('searchBox').value.toLowerCase();
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                const district = document.getElementById('cityFilter').value;
+
+                const filtered = dataSet.filter(item => {
+                    const matchSearch = !searchText || 
+                        item.isim.toLowerCase().includes(searchText) ||
+                        item.yer.toLowerCase().includes(searchText) ||
+                        item.neden.toLowerCase().includes(searchText);
+
+                    const matchStartDate = !startDate || item.tarih >= startDate;
+                    const matchEndDate = !endDate || item.tarih <= endDate;
+
+                    const itemDistrict = item.yer.split(',').length > 1 ? 
+                        item.yer.split(',')[1].trim() : item.yer.split(',')[0].trim();
+                    const matchDistrict = !district || itemDistrict === district;
+
+                    return matchSearch && matchStartDate && matchEndDate && matchDistrict;
+                });
+
+                createMarkers(filtered);
+            };
+
+            // Filtreleri sıfırla
+            window.resetFilters = function() {
+                document.getElementById('searchBox').value = '';
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
+                document.getElementById('cityFilter').value = '';
+                createMarkers(dataSet);
+            };
+
+            // Şablon indir
+            document.getElementById('downloadTemplate').addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const templateData = [
+                    ['isim', 'tarih', 'yer', 'lat', 'lng', 'neden', 'sektor', 'link', 'olum_sayisi'],
+                    ['Örnek Çalışan', '2024-01-15', 'Serdivan, Sakarya', '40.7904', '30.3619', 'Yüksekten düşme', 'İnşaat', 'https://example.com', '1'],
+                    ['Toplu Kaza', '2024-02-20', 'Çankaya, Ankara', '39.9186', '32.8535', 'Makine kazası', 'İmalat', '', '5']
+                ];
+                
+                const ws = XLSX.utils.aoa_to_sheet(templateData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'İş Kazaları');
+                
+                XLSX.writeFile(wb, 'turkiye_is_kazalari_sablon.xlsx');
+            });
+
+            // Excel ve CSV dosyasını yükle
+            document.getElementById('excelFile').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                document.getElementById('fileName').textContent = file.name;
+
+                const reader = new FileReader();
+                const isCSV = file.name.toLowerCase().endsWith('.csv');
+
+                reader.onload = function(e) {
+                    let jsonData;
+                    let workbook;
+                    
+                    try {
+                        if (isCSV) {
+                            const data = e.target.result;
+                            workbook = XLSX.read(data, { type: 'binary' });
+                        } else {
+                            const data = new Uint8Array(e.target.result);
+                            workbook = XLSX.read(data, { type: 'array' });
+                        }
+
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    } catch (error) {
+                        alert('Dosya okuma hatası! Lütfen dosyanızın geçerli bir Excel/CSV dosyası olduğundan, doğru kodlamada (UTF-8) kaydedildiğinden ve sütun başlıklarını kontrol edin.');
+                        console.error("Dosya işlenirken hata oluştu:", error);
+                        return;
+                    }
+
+                    dataSet = jsonData.map(row => ({
+                        // olum_sayisi'nı sayı olarak almayı unutmayın
+                        isim: row.isim || row.İsim || '',
+                        tarih: row.tarih || row.Tarih || '',
+                        yer: row.yer || row.Yer || '',
+                        lat: parseFloat(row.lat || row.Lat || row.LAT || 0),
+                        lng: parseFloat(row.lng || row.Lng || row.LNG || 0),
+                        neden: row.neden || row.Neden || '',
+                        sektor: row.sektor || row.Sektör || row.Sektor || 'Diğer',
+                        link: row.link || row.Link || '',
+                        olum_sayisi: parseInt(row.olum_sayisi || row.Olum_Sayisi || row.OlumSayisi || 1) 
+                    }));
+
+                    // İl/İlçe filtresini doldur
+                    const districts = new Set();
+                    dataSet.forEach(item => {
+                        if (item.yer) {
+                            const parts = item.yer.split(',');
+                            const district = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+                            districts.add(district);
+                        }
+                    });
+
+                    const cityFilter = document.getElementById('cityFilter');
+                    cityFilter.innerHTML = '<option value="">Tümü</option>';
+                    Array.from(districts).sort().forEach(district => {
+                        const option = document.createElement('option');
+                        option.value = district;
+                        option.textContent = district;
+                        cityFilter.appendChild(option);
+                    });
+
+                    createMarkers(dataSet);
+                };
+                
+                if (isCSV) {
+                    reader.readAsBinaryString(file); 
+                } else {
+                    reader.readAsArrayBuffer(file); 
+                }
+            });
+
+            // Arama kutusunda her tuşta filtrele
+            document.getElementById('searchBox').addEventListener('input', window.applyFilters);
+
+            // İstatistikleri başlangıçta güncelle
+            updateStats(0);
+        };
+    </script>
+</body>
+</html>
