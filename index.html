@@ -273,7 +273,7 @@
 <body>
     <div id="header">
         <h1>🏗️ Türkiye İş Cinayetleri Haritası</h1>
-        <p>İş kazalarında hayatını kaybeden işçilerin haritası - GitHub'dan güncel veri yükleyin veya kendi Excel/CSV dosyanızı kullanın</p>
+        <p>GitHub'dan güncel veri yükleyin veya kendi Excel/CSV dosyanızı kullanın</p>
     </div>
 
     <div id="controls">
@@ -296,11 +296,11 @@
         </div>
         <div class="filter-group">
             <label for="startYear">Başlangıç Yılı:</label>
-            <input type="number" id="startYear" min="2000" max="2030" value="2024" placeholder="2024" style="padding: 8px 15px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px; width: 100px;">
+            <input type="number" id="startYear" min="2000" max="2030" value="2025" placeholder="2025" style="padding: 8px 15px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px; width: 100px;">
         </div>
         <div class="filter-group">
             <label for="endYear">Bitiş Yılı:</label>
-            <input type="number" id="endYear" min="2000" max="2030" value="2024" placeholder="2024" style="padding: 8px 15px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px; width: 100px;">
+            <input type="number" id="endYear" min="2000" max="2030" value="2025" placeholder="2025" style="padding: 8px 15px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px; width: 100px;">
         </div>
         <div class="filter-group">
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal;">
@@ -339,7 +339,7 @@
             maxZoom: 18,
         }).addTo(map);
 
-        // Gerçek veriler - Excel dosyasındaki her olay ayrı marker olarak gösterilir
+        // Excel dosyasındaki her olay ayrı marker olarak gösterilir
         // Yeni dosya yükleyerek bu veriyi değiştirebilirsiniz
         let workplaceAccidents = [
             { city: 'Serdivan, Sakarya', lat: 40.7904, lng: 30.3619, count: 1, sector: 'insaat', sectorName: 'İnşaat', reason: 'Yüksekten düşme', date: '2024-01-15', name: 'Örnek Çalışan' },
@@ -580,13 +580,13 @@
         function createClusterGroup() {
             return L.markerClusterGroup({
                 iconCreateFunction: function(cluster) {
-                    // Cluster içindeki tüm markerların ölü sayısını topla
+                    // Cluster içindeki tüm markerların ölüm sayısını topla
                     const markers = cluster.getAllChildMarkers();
                     const totalDeaths = markers.reduce((sum, marker) => {
                         return sum + (marker.options.deathCount || 0);
                     }, 0);
 
-                    // Cluster boyutunu ölü sayısına göre belirle
+                    // Cluster boyutunu ölüm sayısına göre belirle
                     let size = 60;
                     if (totalDeaths >= 30) size = 80;
                     else if (totalDeaths >= 20) size = 70;
@@ -641,7 +641,7 @@
 
                 const marker = L.marker([accident.lat, accident.lng], { 
                     icon: icon,
-                    deathCount: accident.count // Ölü sayısını marker'a ekle
+                    deathCount: accident.count // Ölüm sayısını marker'a ekle
                 })
                     .bindPopup(`
                         <div class="popup-title">${accident.city}</div>
@@ -737,7 +737,7 @@
                 const div = L.DomUtil.create('div', 'stats');
                 div.innerHTML = `
                     <h4>📊 İstatistikler</h4>
-                    <div class="stat-item"><strong>Toplam Ölü:</strong> ${totalDeaths}</div>
+                    <div class="stat-item"><strong>Toplam Ölüm:</strong> ${totalDeaths}</div>
                     <div class="stat-item"><strong>Olay Sayısı:</strong> ${data.length}</div>
                     <div class="stat-item"><strong>Olay Başına Ort:</strong> ${avgPerIncident}</div>
                 `;
