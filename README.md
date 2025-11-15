@@ -1,0 +1,1 @@
+suacalis.github.io/is_cinayetleri adresinden ulaşabilirisiniz
