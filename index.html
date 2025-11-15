@@ -746,33 +746,6 @@
             statsControl.addTo(map);
         }
 
-        // Lejant oluşturma
-        const legend = L.control({ position: 'bottomright' });
-        legend.onAdd = function() {
-            const div = L.DomUtil.create('div', 'legend');
-            div.innerHTML = `
-                <h4>📍 Ölüm Sayısı</h4>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #8e44ad;"></div>
-                    <span>5+ (Kritik)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #c0392b;"></div>
-                    <span>3-4 (Yüksek)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #e67e22;"></div>
-                    <span>2 (Orta)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: #f39c12;"></div>
-                    <span>1 (Düşük)</span>
-                </div>
-            `;
-            return div;
-        };
-        legend.addTo(map);
-
         // İl arama fonksiyonu
         function searchCity() {
             const searchTerm = document.getElementById('citySearch').value.trim();
