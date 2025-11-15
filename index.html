@@ -553,6 +553,7 @@
                 const reason = getColumn(['neden', 'reason', 'sebep']);
                 const name = getColumn(['isim', 'name', 'ad']);
                 const date = getColumn(['tarih', 'date']);
+                const link = getColumn(['link', 'url', 'haber']);
 
                 // Geçerlilik kontrolü
                 if (city && !isNaN(lat) && !isNaN(lng) && sector) {
@@ -569,6 +570,7 @@
                         reason: reason || 'Belirtilmemiş',
                         date: date || '',
                         name: name || ''
+                        link: link || ''
                     });
                 }
             });
