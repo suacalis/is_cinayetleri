@@ -1,2 +1,1 @@
-suacalis.github.io/is_cinayetleri adresinden ulaşabilirisiniz
-[Bağlantı Metni](https://suacalis.github.io/is_cinayetleri)
+[suacalis.github.io/is_cinayetleri adresinden ulaşabilirisiniz](https://suacalis.github.io/is_cinayetleri)
